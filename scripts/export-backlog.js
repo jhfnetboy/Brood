@@ -79,8 +79,13 @@ async function exportStaticBacklog() {
         
         // Let GET requests pass through
         return window.originalFetch.apply(this, arguments).then(res => {
-          if (!res.ok) {
-            console.warn("Intercepted failed static fetch:", resource);
+          // If the request was for an API but Cloudflare returned HTML (SPA fallback)
+          // or if the status is not ok (404 etc), we spoof an empty JSON response.
+          const isApiRequest = typeof resource === 'string' && resource.includes('/api/');
+          const isHtmlResponse = res.headers.get('content-type') && res.headers.get('content-type').includes('text/html');
+          
+          if (!res.ok || (isApiRequest && isHtmlResponse)) {
+            console.warn("Intercepted failed or HTML-fallback static fetch:", resource);
             return new Response(JSON.stringify([]), {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
