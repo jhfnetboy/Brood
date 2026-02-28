@@ -1,6 +1,8 @@
 {
 	"type": "module",
 	"scripts": {
-		"build": "node scripts/export-backlog.js"
+		"build": "node scripts/export-backlog.js",
+		"preview": "npx serve dist",
+		"deploy:cf": "npx wrangler pages deploy dist --project-name brood-backlog"
 	}
 }

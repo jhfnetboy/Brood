@@ -12,32 +12,49 @@
 为了节省 GitHub 云端的计算资源（省钱且避免浪费免费的 CI 通道）、加快构建速度和避免复杂的云端环境依赖配置，本方案采用的是**本地执行运算，GitHub 原样发版**的机制：
 所有的 `HTML/JS/CSS/API JSON` 生成和抓取均在你的本地电脑瞬间完成，而后直接随源代码 PUSH 到代码库中供 GitHub Pages 发布。
 
-### 实现了哪些内容：
-1. **清理遗留依赖**：清除了 vitepress 和 vue 的依赖残留以及 `docs/` 文件夹。
-2. **新增静默打版打包脚本 (`scripts/export-backlog.js`)**：
-   运行 `pnpm run build` 后，系统会在本地后台起一个临时的 backlog browser 本地服务器，把它的 `index.html` 以及 `chunk-*.js`, `api/*.json` 数据全量快速地抓取到 `dist/` 文件夹下。
-3. **注入只读模式拦截器 (Read-Only Interceptor)**：
-   脚本在导出 `index.html` 时，会在内部的 Header 处动态劫持并覆盖原生的 `window.fetch` 方法：
-   - 过滤掉任何会对数据产生的副作用的 HTTP 动作，包括 `POST`, `PUT`, `PATCH`, `DELETE`。
-   - 检测到这些意外修改动作后，不再显示 404/405 等红色的粗暴错误，而是在顶部优雅地弹出一个居中带模糊效果的黑色深色气泡通知（只读展示模式：无法修改或删除项目数据）。
-   - 让这类被拦截的内部 API 请求静默获得模拟成功的响应，从而完全杜绝原框架的前端控制台报错。
-4. **隐藏危险按钮**：注入了一些原生的轻量 CSS 规则，利用属性选择器把类似删除、垃圾桶之类的 `button` 按键使用 `display: none` 静默隐藏掉了。
+## 绝对的防篡改安全性 (Zero-Backend Security)
+**您完全不用担心黑客通过 HTTP 请求（如 Postman、CURL 等）绕过前端按钮来删改文件。**
 
-### 如何发布内容：
-每一次你修改了任务或者文档，都只需要在你的终端中依次执行以下几步：
+因为我们导出并且托管在网上的 `dist/` 文件夹**仅仅是一堆静态的 HTML、CSS 和只读的 JSON 文本文件**。网上的代码库**根本不存在所谓的“后端”**或者 Node.js 运行环境！
+当前端或者黑客试图对这些静态文件发起 `POST`, `PUT`, `DELETE` 等修改请求时，GitHub Pages 或 Cloudflare 的 CDN 服务器在底层会直接返回 `405 Method Not Allowed` 或是 `404 Not Found`。攻击者即便分析透了代码，也面对的是一堵死墙，因为后端修改大门早就被物理“拆除”了。
 
-1. 一键生成只读页面缓存
+## 发布指南指引 (Deployment)
+
+### 选项 A：发布到 GitHub Pages (默认开启)
+由于我们配置了 Github Actions 工作流：
+每一次你修改了任务或者文档，只需要在本地：
+1. **生成静态快照**：
+   ```bash
+   pnpm run build
+   ```
+2. **（可选）本地预览**：
+   ```bash
+   pnpm run preview
+   # 或者直接运行 npx serve dist
+   ```
+   这会启动一个本地服务器供你查看发布后的只读排版和气泡效果。
+
+3. **推送代码至主分支**：
+   ```bash
+   git add .
+   git commit -m "update tasks or docs"
+   git push
+   ```
+云端会自动检测您的推送，并将 `dist/` 目录的内容极其快速地直接推向 GitHub Pages。
+
+### 选项 B：发布到 Cloudflare Pages
+通过 Cloudflare 有两种极简的发布方式：
+
+**方式一：CLI 命令行直推（本地直发）**
+如果您急需将当前本地计算好的 `dist` 直接糊到 Cloudflare 上，只需运行我们内置的脚本（需要您以前登录过 wrangler）：
 ```bash
-pnpm run build
+pnpm run deploy:cf
 ```
-（运行完毕后，这会更新你本地的纯静态输出文件夹 `dist/`。你也可以通过 `npx serve dist` 临时本地验证其防串改和显示效果。）
+首次运行会提示您登录 Cloudflare 并一键上传。
 
-2. 提交代码至 GitHub
-```bash
-git add .
-git commit -m "update tasks or docs"
-git push
-```
-
-3. **结束！**
-仓库的 GitHub Actions 工作流（`.github/workflows/deploy.yml`）会自动捕捉到这次 push。**云端不会再次运行 `backlog.md` 抓取过程（为您节省了数分钟运算时间）**，而是仅仅耗费几秒钟时间，直接将最新推上来的 `dist/` 文件夹原原本本地塞进 GitHub Pages 并为您发布。
+**方式二：Cloudflare 后台关联 Github (推荐)**
+在 Cloudflare Pages 的网页控制台上：
+1. 点击 "Connect to Git"，选中本仓库。
+2. 设置 **Build command** 留空或者填入 `echo "No build"` (因为已经本地 build 过了)。
+3. 设置 **Build output directory** 为 `dist`。
+这样以后你每次 `git push` 给 Github，Cloudflare 也一样会自动拉取 `dist/` 并秒速部署到它的全球 CDN 上。
