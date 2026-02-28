@@ -78,8 +78,49 @@ async function exportStaticBacklog() {
         }
         
         // Let GET requests pass through
-        return window.originalFetch.apply(this, arguments);
+        return window.originalFetch.apply(this, arguments).then(res => {
+          if (!res.ok) {
+            console.warn("Intercepted failed static fetch:", resource);
+            return new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          return res;
+        }).catch(err => {
+          return new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+          });
+        });
       };
+      
+      // Mock EventSource to prevent "Server disconnected" UI errors
+      class MockEventSource {
+        constructor() {
+          this.readyState = 1; // OPEN
+          setTimeout(() => {
+            if (this.onopen) this.onopen(new Event('open'));
+          }, 100);
+        }
+        close() {}
+        addEventListener() {}
+        removeEventListener() {}
+      }
+      window.EventSource = MockEventSource;
+
+      // Mock WebSocket for the same reason
+      class MockWebSocket {
+        constructor() {
+          this.readyState = 1; // OPEN
+          setTimeout(() => {
+            if (this.onopen) this.onopen(new Event('open'));
+          }, 100);
+        }
+        send() {}
+        close() {}
+      }
+      window.WebSocket = MockWebSocket;
 
       function showReadOnlyToast() {
         let t = document.getElementById('ro-toast');
@@ -119,14 +160,17 @@ async function exportStaticBacklog() {
     // Download API data
     const apiEndpoints = [
       'tasks', 'config', 'milestones', 'docs',
-      'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version', 'init'
+      'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version', 'init',
+      'search', 'milestones/archived'
     ];
 
     console.log('Downloading API endpoints...');
     for (const ep of apiEndpoints) {
       try {
         const data = await fetchFromLocal('/api/' + ep);
-        await fs.writeFile(path.join(apiDir, ep), data);
+        const targetPath = path.join(apiDir, ep);
+        await fs.mkdir(path.dirname(targetPath), { recursive: true });
+        await fs.writeFile(targetPath, data);
       } catch (err) {
         console.warn('Warning: could not fetch /api/' + ep);
       }
