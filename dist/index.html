@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    <title>Backlog.md - Task Management</title>
+    <link rel="icon" type="image/png" href="./favicon-nj6r3f8v.png">
+    
+    <script>
+        // Prevent flash of wrong theme by applying theme before page renders
+        (function() {
+            const savedTheme = localStorage.getItem('backlog-theme');
+            const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemDark);
+            
+            if (shouldUseDark) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+<link rel="stylesheet" crossorigin href="./chunk-zhgsxncb.css"><script type="module" crossorigin src="./chunk-t1h94j9b.js"></script>
+    <script>
+      window.originalFetch = window.fetch;
+      window.fetch = async function(resource, init) {
+        let method = 'GET';
+        if (init && init.method) {
+          method = init.method.toUpperCase();
+        } else if (resource && typeof resource === 'object' && resource.method) {
+          method = resource.method.toUpperCase();
+        }
+        
+        // Intercept any write operations
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+          showReadOnlyToast();
+          // Provide a fake successful response to avoid UI errors/crashes
+          return new Response(JSON.stringify({ success: true, message: "Read-only mode" }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Let GET requests pass through
+        return window.originalFetch.apply(this, arguments);
+      };
+
+      function showReadOnlyToast() {
+        let t = document.getElementById('ro-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'ro-toast';
+          t.style.cssText = 'position:fixed;top:24px;left:50%;transform:translate(-50%, -20px);background:rgba(17,24,39,0.9);color:white;padding:12px 24px;border-radius:30px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);z-index:99999;font-family:system-ui,-apple-system,sans-serif;transition:opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);font-size:14px;pointer-events:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);opacity:0;';
+          t.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span>只读展示模式：无法修改或删除项目数据</span>';
+          document.body.appendChild(t);
+        }
+        
+        // Force reflow
+        void t.offsetWidth;
+        
+        t.style.opacity = '1';
+        t.style.transform = 'translate(-50%, 0)';
+        
+        if (window.toastTimeout) clearTimeout(window.toastTimeout);
+        window.toastTimeout = setTimeout(() => { 
+          t.style.opacity = '0'; 
+          t.style.transform = 'translate(-50%, -10px)';
+        }, 3000);
+      }
+      
+      // Inject CSS to hide some destructive UI elements gracefully
+      document.addEventListener('DOMContentLoaded', () => {
+        const style = document.createElement('style');
+        style.innerHTML = 'button[title*="Delete"], button[aria-label*="Delete"] { display: none !important; }';
+        document.head.appendChild(style);
+      });
+    </script>
+    </head>
+<body>
+    <div id="root"></div>
+    
+</body>
+</html>

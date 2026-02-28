@@ -1,0 +1,1 @@
+{"projectName":"BroodBrain","statuses":["To Do","In Progress","Done"],"labels":[],"defaultStatus":"To Do","dateFormat":"yyyy-mm-dd","maxColumnWidth":20,"defaultEditor":"zed","autoOpenBrowser":true,"defaultPort":6420,"remoteOperations":true,"autoCommit":false,"bypassGitHooks":false,"checkActiveBranches":true,"activeBranchDays":30,"prefixes":{"task":"task"}}
