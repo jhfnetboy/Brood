@@ -159,7 +159,7 @@ async function exportStaticBacklog() {
 
     // Download API data
     const apiEndpoints = [
-      'tasks', 'config', 'milestones', 'docs',
+      'tasks', 'tasks/list', 'config', 'milestones', 'docs',
       'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version', 'init',
       'search', 'milestones/archived'
     ];
@@ -201,6 +201,14 @@ async function exportStaticBacklog() {
       ]
     };
     await fs.writeFile(path.join(distDir, 'vercel.json'), JSON.stringify(vercelContent, null, 2));
+
+    // Create Cloudflare/Vercel routing fallback files
+    await fs.writeFile(path.join(distDir, '_routes.json'), JSON.stringify({
+      version: 1,
+      include: ["/*"],
+      exclude: ["/api/*"]
+    }));
+    await fs.writeFile(path.join(distDir, '_redirects'), '/api/* /api/:splat 200\n/* /index.html 200');
 
     console.log('✨ Static export complete! Saved to dist/');
     console.log('🚀 You can preview it locally by running: npx serve dist');
