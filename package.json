@@ -1,6 +1,6 @@
 {
-	"devDependencies": {
-		"vitepress": "^1.6.4",
-		"vue": "^3.5.29"
+	"type": "module",
+	"scripts": {
+		"build": "node scripts/export-backlog.js"
 	}
 }
