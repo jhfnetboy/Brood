@@ -187,8 +187,8 @@ async function exportStaticBacklog() {
 
     // Download initial API data
     const apiEndpoints = [
-      'tasks', 'tasks/list', 'config', 'milestones', 'docs',
-      'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version', 'init',
+      'tasks', 'config', 'milestones', 'docs',
+      'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version',
       'search', 'milestones/archived'
     ];
 
