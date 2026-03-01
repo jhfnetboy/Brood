@@ -39,6 +39,15 @@
             headers: { 'Content-Type': 'application/json' }
           });
         }
+        // Append .json to bypass Unix folder/file collision in dist/
+        if (typeof resource === 'string' && resource.includes('/api/')) {
+          let urlParts = resource.split('?');
+          if (!urlParts[0].endsWith('.json')) {
+            urlParts[0] = urlParts[0] + '.json';
+          }
+          arguments[0] = urlParts.join('?');
+          resource = arguments[0];
+        }
         
         // Let GET requests pass through
         return window.originalFetch.apply(this, arguments).then(res => {

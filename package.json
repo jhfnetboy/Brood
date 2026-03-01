@@ -2,7 +2,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "node scripts/export-backlog.js",
-		"preview": "npx serve dist",
+		"preview": "lsof -i:3000 -t | xargs kill -9 > /dev/null 2>&1 || true && npx serve dist -l 3000",
 		"deploy:cf": "npx wrangler pages deploy dist --project-name brood-backlog"
 	}
 }

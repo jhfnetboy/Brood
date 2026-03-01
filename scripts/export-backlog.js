@@ -5,16 +5,30 @@ import http from 'node:http';
 
 const distDir = path.join(process.cwd(), 'dist');
 const apiDir = path.join(distDir, 'api');
-const PORT = 8420;
+const PORT = 8422;
 
-async function fetchFromLocal(pathUrl) {
-  return new Promise((resolve, reject) => {
-    http.get(`http://localhost:${PORT}${pathUrl}`, (res) => {
-      let data = Buffer.alloc(0);
-      res.on('data', chunk => { data = Buffer.concat([data, chunk]); });
-      res.on('end', () => resolve(data));
-    }).on('error', reject);
-  });
+async function fetchFromLocal(endpoint, retries = 5) {
+  let lastStatus = 0;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(`http://localhost:${PORT}${endpoint}`);
+      if (res.ok) {
+        return await res.text();
+      }
+      lastStatus = res.status;
+      console.log(`Retry ${i+1}/${retries} for ${endpoint} - Status: ${res.status}`);
+    } catch (err) {
+      console.log(`Retry ${i+1}/${retries} for ${endpoint} - Error: ${err.message}`);
+      if (i === retries - 1) throw err;
+    }
+    
+    if (i < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      continue;
+    }
+    
+    throw new Error(`HTTP error ${lastStatus} for ${endpoint}`);
+  }
 }
 
 async function exportStaticBacklog() {
@@ -75,6 +89,15 @@ async function exportStaticBacklog() {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
           });
+        }
+        // Append .json to bypass Unix folder/file collision in dist/
+        if (typeof resource === 'string' && resource.includes('/api/')) {
+          let urlParts = resource.split('?');
+          if (!urlParts[0].endsWith('.json')) {
+            urlParts[0] = urlParts[0] + '.json';
+          }
+          arguments[0] = urlParts.join('?');
+          resource = arguments[0];
         }
         
         // Let GET requests pass through
@@ -162,7 +185,7 @@ async function exportStaticBacklog() {
     indexHtml = indexHtml.replace('</head>', injectedScript + '</head>');
     await fs.writeFile(path.join(distDir, 'index.html'), indexHtml);
 
-    // Download API data
+    // Download initial API data
     const apiEndpoints = [
       'tasks', 'tasks/list', 'config', 'milestones', 'docs',
       'decisions', 'drafts', 'statistics', 'status', 'statuses', 'version', 'init',
@@ -173,13 +196,85 @@ async function exportStaticBacklog() {
     for (const ep of apiEndpoints) {
       try {
         const data = await fetchFromLocal('/api/' + ep);
-        const targetPath = path.join(apiDir, ep);
+        const targetPath = path.join(apiDir, ep + '.json');
         await fs.mkdir(path.dirname(targetPath), { recursive: true });
         await fs.writeFile(targetPath, data);
       } catch (err) {
         console.warn('Warning: could not fetch /api/' + ep);
       }
     }
+
+    // Wait a brief moment to ensure Backlog has fully indexed documents and decisions
+    // The backlog CLI needs time to parse the markdown files from the filesystem
+    console.log('Waiting 2 seconds for Backlog server to index documents...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Download individual documents
+    try {
+      console.log('Fetching individual documents...');
+      const docsJson = await fs.readFile(path.join(apiDir, 'docs.json'), 'utf-8');
+      const docs = JSON.parse(docsJson);
+      for (const d of docs) {
+        if (d.id) {
+          try {
+             // The ID is strictly the string like "doc-1"
+             const docId = String(d.id);
+             const data = await fetchFromLocal('/api/docs/' + docId);
+             
+             const targetPath = path.join(apiDir, 'docs', docId + '.json');
+             await fs.mkdir(path.dirname(targetPath), { recursive: true });
+             await fs.writeFile(targetPath, data);
+             console.log(`  - Saved document: ${docId}`);
+          } catch(e) {
+             console.warn(`  ! Could not fetch /api/docs/${d.id}`);
+          }
+        }
+      }
+    } catch(err) {
+      console.warn("Error processing documents array: " + err.message);
+    }
+
+    // Download individual decisions
+    try {
+      console.log('Fetching individual decisions...');
+      const decisionsJson = await fs.readFile(path.join(apiDir, 'decisions.json'), 'utf-8');
+      const decisions = JSON.parse(decisionsJson);
+      for (const d of decisions) {
+        if (d.id) {
+          try {
+             const decId = String(d.id);
+             const data = await fetchFromLocal('/api/decisions/' + decId);
+             
+             const targetPath = path.join(apiDir, 'decisions', decId + '.json');
+             await fs.mkdir(path.dirname(targetPath), { recursive: true });
+             await fs.writeFile(targetPath, data);
+             console.log(`  - Saved decision: ${decId}`);
+          } catch(e) {
+             console.warn(`  ! Could not fetch /api/decisions/${d.id}`);
+          }
+        }
+      }
+    } catch(err) {
+       console.warn("Error processing decisions array: " + err.message);
+    }
+
+    // Download individual milestones
+    try {
+      console.log('Fetching individual milestones...');
+      const milestonesJson = await fs.readFile(path.join(apiDir, 'milestones.json'), 'utf-8');
+      const milestones = JSON.parse(milestonesJson);
+      for (const m of milestones) {
+        if (m.title) {
+          try {
+             const encodedId = encodeURIComponent(m.title);
+             const data = await fetchFromLocal('/api/milestones/' + encodedId);
+             const targetPath = path.join(apiDir, 'milestones', encodedId + '.json');
+             await fs.mkdir(path.dirname(targetPath), { recursive: true });
+             await fs.writeFile(targetPath, data);
+          } catch(e) {}
+        }
+      }
+    } catch(err) {}
 
     // Write _headers for Cloudflare Pages (ensures API files return JSON content-type)
     const headersContent = "/api/*\\n  Content-Type: application/json\\n";
