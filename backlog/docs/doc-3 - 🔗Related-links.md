@@ -1,10 +1,10 @@
 ---
 id: doc-3
-title: Related links
+title: "\U0001F517Related links"
 type: other
 created_date: '2026-02-28 05:28'
+updated_date: '2026-03-01 04:04'
 ---
-# Related links
 ## Speak slides collection
 - [Be Yourself YoungMan Speak Slides](https://docs.google.com/presentation/d/1LYWK1BETRRygChza3NCF7nVxRsjR_ymyagyrY9jL3gU/edit?usp=sharing)
 - [Open Source Empower Individuals](https://docs.google.com/presentation/d/1T2pAuX2ZRakLq0JI6HT5Kn_NW31DVGGP9p-SrlOzqLs/edit?usp=sharing)

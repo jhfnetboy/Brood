@@ -1,12 +1,10 @@
 ---
 id: doc-1
-title: BroodBrain Readme
+title: "\U0001F9E0 BroodBrain Readme"
 type: other
 created_date: '2026-02-28 04:02'
-updated_date: '2026-02-28 07:15'
+updated_date: '2026-03-01 04:03'
 ---
-# 🧠 BroodBrain Dashboard
-
 欢迎来到 BroodBrain，这是 Mycelium Protocol 的“外部大脑”。
 
 ## 快速导航 (Quick Navigation)
